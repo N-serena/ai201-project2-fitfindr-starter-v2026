@@ -17,8 +17,8 @@ import re
 
 import config
 import trace
-from mcp_client import call_tool
-from tools import suggest_outfit, create_fit_card
+from mcp_client import MCPError, call_tool
+from tools import suggest_outfit
 from generate import ModelUnavailable
 
 
@@ -170,7 +170,7 @@ def run_agent(query: str, wardrobe: dict) -> dict:
                 item = session["selected_item"]
                 session["fit_card"] = create_fit_card(session["outfit_suggestion"], item)
                 trace.step(
-                    "create_fit_card",
+                    "create_fit_card (via MCP)",
                     inputs=f"new_item={_item_ref(item)}, "
                            f"outfit={len(session['outfit_suggestion'])} chars",
                     returned=session["fit_card"],
@@ -188,6 +188,20 @@ def run_agent(query: str, wardrobe: dict) -> dict:
         trace.step("model unavailable", returned=str(exc), note="stopping, error set in session")
         return session
 
+    except MCPError as exc:
+        reason = str(exc).split("Error executing tool ")[-1].split(": ", 1)[-1].splitlines()[0]
+        if session["selected_item"] is None:
+            session["error"] = f"The search service failed: {reason} Try again in a moment."
+        else:
+            found = session["selected_item"]
+            session["error"] = (
+                f"The fit card couldn't be written: {reason} The search and outfit "
+                f"still worked — it found {found['title']} (${found['price']:g} on "
+                f"{found['platform']}), and the outfit suggestion is in the session."
+            )
+        trace.step("MCP call failed", returned=reason, note="stopping, error set in session")
+        return session
+
 
 def _item_ref(item: dict) -> str:
     """How a listing appears in the trace: id first, so tools' inputs can be compared."""
@@ -203,6 +217,12 @@ def search_listings(description: str, size: str | None, max_price: float | None)
         "size": size,
         "max_price": max_price,
     })
+
+
+
+def create_fit_card(outfit: str, new_item: dict) -> str:
+    """tools.create_fit_card, called through the MCP server in mcp_server.py."""
+    return call_tool("create_fit_card", {"outfit": outfit, "new_item": new_item})
 
 
 # ── query parsing ─────────────────────────────────────────────────────────────

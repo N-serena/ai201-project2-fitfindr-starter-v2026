@@ -2,6 +2,20 @@
 
 Newest first.
 
+## 2026-10-07 — Stretch 2: fixes in the given `mcp_client.py`
+
+Moving a model-calling tool onto MCP exposed two bugs in the provided client,
+so it was edited:
+
+- `_server_env` forwards `AI201_CACHE`, plus `GEMINI_API_KEY` and
+  `AI201_MODEL` when they are set. The stdio client's default environment
+  leaves them out, so the server ran with the cache on during evals.
+- `_find_mcp_error` unwraps the `ExceptionGroup` the stdio task group puts
+  around an `MCPError`, so the server's reason reaches the user.
+
+Left as-is: `generate.py` counts calls and paces requests per process, so
+fit-card calls made in the server are missing from both.
+
 ## 2026-10-07 — Unit 4 improvement: generic pieces in empty-wardrobe advice
 
 Criterion 5 missed 1/5 because the model named "white ribbed tank top", which

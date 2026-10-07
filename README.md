@@ -758,6 +758,67 @@ applies. The notice is honest about the size but says nothing about the
 weaker match. A fix would be to only accept a retry result that scores as
 well as a sized match would have.
 
+**2. A second tool on MCP — done.** `create_fit_card` is registered in
+`mcp_server.py`, with a description that states its inputs, the
+empty-outfit case and what happens when the model can't be reached.
+`agent.py::create_fit_card` calls it through `call_tool`, and its trace step
+is now `create_fit_card (via MCP)`. `python mcp_client.py` lists both tools.
+
+Unlike the search move, this one did not behave the same afterwards. Testing
+it turned up two real bugs:
+
+- **The eval would have quietly re-used cached cards.** `run_eval.py` turns
+  the cache off with `config.CACHE_ENABLED = False`, but only in the agent's
+  process. The MCP stdio client starts the server with a short list of system
+  variables, and the server reads `.env` itself, so its cache stayed on. With
+  the cache "off", three calls through MCP for the same item returned the
+  identical card:
+
+  ```
+  via MCP, cache off in the agent:
+     Scored this washed burgundy henley on thredUp for only $16 and the cotton is alr
+     Scored this washed burgundy henley on thredUp for only $16 and the cotton is alr
+     Scored this washed burgundy henley on thredUp for only $16 and the cotton is alr
+  ```
+
+  That would have made criterion 4's "five different first sentences" check
+  measure the cache, not the model. The fix is in `mcp_client.py::_server_env`,
+  which passes `AI201_CACHE` (and any `GEMINI_API_KEY` / `AI201_MODEL` set for
+  the command) to the server. After the fix, the same test gave three
+  different cards.
+
+- **A model failure inside the server lost its reason.** The server reported
+  "The model rejected your API key…", but the agent saw "unhandled errors in a
+  TaskGroup (1 sub-exception)". The stdio client's task group wraps the
+  `MCPError` that `call_tool` raises inside it in an `ExceptionGroup`, so
+  `except MCPError` never matched. `mcp_client.py::_find_mcp_error` now
+  unwraps it. `agent.py::run_agent` catches `MCPError` and says which step
+  failed and what still worked.
+
+The error path was forced by stubbing `suggest_outfit`, so that only the
+server would hit the bad key:
+
+```
+[4] suggest_outfit
+      in:  new_item=lst_002 Y2K Baby Tee — Butterfly Print, wardrobe=10 items
+      out: Tucked into baggy dark-wash jeans with chunky white sneakers.
+[5] MCP call failed
+      out: The model rejected your API key. Check GEMINI_API_KEY in your .env file, or create a fresh key at aistudio.goo…
+      →    stopping, error set in session
+
+error: The fit card couldn't be written: The model rejected your API key. Check GEMINI_API_KEY in your .env file, or create a fresh key at aistudio.google.com. The search and outfit still worked — it found Y2K Baby Tee — Butterfly Print ($18 on depop), and the outfit suggestion is in the session.
+```
+
+What is still off:
+
+- **The call counter undercounts.** A full run that made two model calls
+  prints "1 model calls this session", because the fit card's call happens in
+  the server's process and `generate.py` counts per process.
+- **Pacing is per process too.** The rate limiter in the agent never sees the
+  fit-card calls, so a back-to-back eval can go over 15 requests a minute.
+  `generate.py`'s retry-with-backoff on a 429 is what catches it; the
+  `after2` run in stretch 3 is the test of that.
+
 <!-- ═════════════════════════════════════════════════════════════════════
 
      SUBMISSION CHECKLIST — unit 3

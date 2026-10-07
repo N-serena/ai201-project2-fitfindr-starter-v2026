@@ -59,6 +59,7 @@ works with a direct call, and **a documented failure earns the point in full.**
 
 from mcp.server.fastmcp import FastMCP
 
+from tools import create_fit_card as _create_fit_card_impl
 from tools import search_listings as _search_listings_impl
 
 # log_level="WARNING" keeps the server from printing an INFO line for every
@@ -109,6 +110,29 @@ def search_listings(
 # are not optional here. `description: str` becomes a required string;
 # `max_price: float | None = None` becomes an optional number. Getting these
 # wrong is the most common reason a call is rejected.
+
+
+
+# Stretch feature: a second tool on MCP.
+@mcp.tool()
+def create_fit_card(outfit: str, new_item: dict) -> str:
+    """
+    Write a 2-4 sentence social-media caption about a thrifted item, in a
+    casual first-person voice, mentioning the item, its price (e.g. "$24")
+    and its platform once each.
+
+    Inputs:
+      outfit:   plain-text description of how the item is being styled.
+      new_item: one listing object exactly as search_listings returns it
+                (needs title, category, price, platform, condition, size,
+                colors, style_tags, description; brand may be null).
+
+    Returns the caption as a string. If outfit is empty or only whitespace,
+    returns a short message saying there is no outfit to caption, without
+    calling the model. If the language model can't be reached, the call
+    fails with an error whose text says why (e.g. a rejected API key).
+    """
+    return _create_fit_card_impl(outfit, new_item)
 
 
 if __name__ == "__main__":

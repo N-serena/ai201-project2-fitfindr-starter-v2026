@@ -60,6 +60,10 @@ def call_tool(name: str, arguments: dict):
     except MCPError:
         raise
     except Exception as exc:  # noqa: BLE001 — re-raised readably below
+        # The stdio client's task group wraps an MCPError raised inside it.
+        inner = _find_mcp_error(exc)
+        if inner is not None:
+            raise inner from None
         raise MCPError(
             f"Couldn't call '{name}' over MCP: {exc}\n"
             f"Check that mcp_server.py runs on its own first:\n"
@@ -75,6 +79,7 @@ async def _call(name: str, arguments: dict):
     params = StdioServerParameters(
         command=sys.executable,
         args=[str(SERVER)],
+        env=_server_env(),
     )
 
     async with stdio_client(params) as (read, write):
@@ -95,6 +100,36 @@ async def _call(name: str, arguments: dict):
                 raise MCPError(f"The tool '{name}' returned an error: {_text(result)}")
 
             return _unwrap(result)
+
+
+def _find_mcp_error(exc: BaseException) -> "MCPError | None":
+    """The first MCPError inside a (possibly nested) ExceptionGroup."""
+    if isinstance(exc, MCPError):
+        return exc
+    for sub in getattr(exc, "exceptions", ()):
+        found = _find_mcp_error(sub)
+        if found is not None:
+            return found
+    return None
+
+
+def _server_env() -> dict:
+    """
+    Settings the server process must share with the agent.
+
+    The stdio client passes the server only a short list of system variables,
+    and the server reads .env on its own. So without this, a cache turned off
+    in this process (run_eval.py does that) stays on in the server, and a key
+    set for one command never reaches it.
+    """
+    import os
+    import config
+
+    env = {"AI201_CACHE": "1" if config.CACHE_ENABLED else "0"}
+    for name in ("GEMINI_API_KEY", "AI201_MODEL"):
+        if os.environ.get(name):
+            env[name] = os.environ[name]
+    return env
 
 
 def _unwrap(result):
