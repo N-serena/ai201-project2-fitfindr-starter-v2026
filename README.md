@@ -433,21 +433,102 @@ What's Still Broken.
 **Happy path**
 
 ```
+$ python app.py ask '90s track jacket in size M' --trace
+[1] parse_query
+      in:  90s track jacket in size M
+      out: {'description': '90s track jacket in', 'size': 'M', 'max_price': None}
+[2] search_listings (via MCP)
+      in:  description='90s track jacket in', size='M', max_price=None
+      out: 4 items: 90s Track Jacket — Navy/White Stripe, 90s Silk Slip Dress — Floral, Midi Length, 90s Leather Bomber — Black … +1 more
+      →    branch: 4 results, continuing
+[3] select_item
+      out: lst_004 90s Track Jacket — Navy/White Stripe
+[4] suggest_outfit
+      in:  new_item=lst_004 90s Track Jacket — Navy/White Stripe, wardrobe=10 items
+      out: Outfit One: Pair the 90s Track Jacket with the white ribbed tank top, baggy straight-leg jeans, and chunky whi…
+[5] create_fit_card
+      in:  new_item=lst_004 90s Track Jacket — Navy/White Stripe, outfit=505 chars
+      out: Scored this vintage Champion track jacket on Poshmark for $45 and it’s basically my new uniform. It’s the ulti…
 
+  Found:    90s Track Jacket — Navy/White Stripe — $45.0 on poshmark
+
+  Outfit:   Outfit One: Pair the 90s Track Jacket with the white ribbed tank top, baggy straight-leg jeans, and chunky white sneakers. This look works because it leans into classic 90s athletic streetwear using effortless, casual layering.
+
+Outfit Two: Layer the 90s Track Jacket over the black cropped zip hoodie, combined with the wide-leg khaki trousers and black combat boots. This outfit works because mixing the sporty navy jacket with tailored trousers and edgy boots creates a balanced, high-low street style.
+
+  Fit card: Scored this vintage Champion track jacket on Poshmark for $45 and it’s basically my new uniform. It’s the ultimate 90s athletic layer whether I'm keeping it casual with baggy denim or mixing it with tailored trousers and combat boots for that high-low streetwear vibe. Either way, the sleeve stripes do all the work.
+
+2 model calls this session, 649 prompt + 179 output tokens
 ```
 
 **Empty search**
 
 ```
+$ python app.py ask 'platform sneakers size 8 under $20' --trace
+[1] parse_query
+      in:  platform sneakers size 8 under $20
+      out: {'description': 'platform sneakers', 'size': '8', 'max_price': 20.0}
+[2] search_listings (via MCP)
+      in:  description='platform sneakers', size='8', max_price=20.0
+      out: [] (empty)
+      →    branch: empty, stopping before suggest_outfit
 
+  Nothing matched 'platform sneakers' in size 8 under $20. Try to raise the price ceiling above $20 or drop the size 8.
+
+0 model calls this session
 ```
 
-**On the MCP move:** <!-- what changed in your code, and whether anything
-behaved differently afterwards. If the rewire didn't work, say exactly where it
-broke — the error text and the last thing that worked. That earns the point in
-full. -->
+Two steps instead of five, and no model calls. The platform sneakers exist
+in size 8 but cost $48, so the message points at the price ceiling.
 
+**The other two failure modes**
 
+The model can't be reached. This run used a deliberately wrong key, set for
+this one command only; `.env` was untouched, and the cache was off:
+
+```
+$ AI201_CACHE=0 GEMINI_API_KEY=AIzaBADKEY... python app.py ask 'denim jacket under $50' --trace
+[1] parse_query
+      in:  denim jacket under $50
+      out: {'description': 'denim jacket', 'size': None, 'max_price': 50.0}
+[2] search_listings (via MCP)
+      in:  description='denim jacket', size=None, max_price=50.0
+      out: 6 items: Denim Jacket — Light Wash, Cropped, Vintage Levi's 501 Jeans — Medium Wash, 90s Track Jacket — Navy/White Stripe … +3 more
+      →    branch: 6 results, continuing
+[3] select_item
+      out: lst_007 Denim Jacket — Light Wash, Cropped
+[4] model unavailable
+      out: The model rejected your API key. Check GEMINI_API_KEY in your .env file, or create a fresh key at aistudio.goo…
+      →    stopping, error set in session
+
+  The model rejected your API key. Check GEMINI_API_KEY in your .env file, or create a fresh key at aistudio.google.com. The search still worked — it found Denim Jacket — Light Wash, Cropped ($42 on poshmark).
+
+1 model calls this session
+```
+
+`agent.py::run_agent` catches `ModelUnavailable`, puts the message in
+`session["error"]` and returns, so the user sees a message, not a stack
+trace.
+
+Empty wardrobe: `python app.py ask '...' --empty-wardrobe`, and the
+`empty wardrobe` scenario in both run logs. The trace shows `wardrobe=0
+items` going into `suggest_outfit`, and it returns general advice. That
+path is criterion 5.
+
+**On the MCP move:** `search_listings` is registered in `mcp_server.py` with
+a description written for a caller who can't see the code. It gives the size
+rule, the price as inclusive US dollars, every field of a listing, and `[]`
+when nothing matches. `agent.py` no longer imports the search function. Its
+`search_listings` wrapper calls `mcp_client.call_tool("search_listings",
+...)`, and the main search and both re-runs in `_no_results_message` go
+through it.
+
+Nothing behaved differently afterwards. I compared direct and MCP results on
+five queries, two of them empty, and all five were identical. The empty case
+came back as a real `[]`, not `None` or a JSON string, so the branch kept
+working unchanged. The only difference is speed. Each call starts the server
+as a new process, so an empty search with its two diagnostic re-runs makes
+three MCP calls, and `python agent.py` takes about 4 seconds.
 
 ---
 
@@ -515,36 +596,66 @@ more runs before calling the white-tank collision gone for good.
      you did. "I ran out of time" is fine if it's true. Pretending nothing is
      left is not. -->
 
+No criterion is missed after the improvement. Here is what is still wrong
+or untested.
 
+- **The fit cards all sound alike.** 18 of the 20 cards in the after run
+  open with "Scored this … on <platform> for $<price>". Criterion 4 passes
+  because it only checks for identical first sentences, and the wording
+  varies just enough. In the before run, three cards in the criterion 1
+  scenario did share an identical first sentence. Next I would revise
+  criterion 4 to "no two of five cards share their first four words". That
+  would miss today, and I would fix it in the `create_fit_card` prompt by
+  asking for a different opening, such as the vibe or the outfit, not the
+  purchase. I stopped because unit 4 allows one improvement, and criterion 5
+  was the actual miss.
+- **Empty-wardrobe advice got vaguer.** The fix traded usefulness for the
+  guarantee. "A fluid, wide-bottom piece in a dark neutral" is harder to shop
+  for than "black wide-leg trousers". The criterion has no measure of
+  usefulness, so a too-vague answer would still pass. I would add one.
+- **Criterion 5's name check is broader than the failure it is meant to
+  catch.** It flags any generic phrase that happens to match a wardrobe item,
+  even when nothing claims ownership. It passed 5/5 after the fix, but five
+  tries is a small sample, and "white ribbed tank top" could still come back.
+- **The search pads results.** Almost every listing is tagged `vintage`, so
+  `vintage …` queries fill all 10 slots, and "One Size" items show up in
+  sized searches. The agent only uses the top result, and the right item
+  ranked first in every run, so this hasn't caused a miss yet.
+- **The query parser keeps filler words.** `'90s track jacket in size M'`
+  leaves `'90s track jacket in'` as the description. The search's stopwords
+  remove "in", so results are right, but the parsed field is untidy.
+- **The bad-key path isn't in `scenarios.py`.** It needs a different
+  environment, so it was triggered by hand once (above) and not run five
+  times.
 
 <!-- ═════════════════════════════════════════════════════════════════════
 
      SUBMISSION CHECKLIST — unit 3
 
-       [ ] criteria.md has five numbered criteria, each with a target
-       [ ] Each criterion has a reason underneath it
-       [ ] All five unit 3 sections above have real content
-       [ ] Tool Inventory: all three tools, inputs WITH TYPES, a specific
+       [x] criteria.md has five numbered criteria, each with a target
+       [x] Each criterion has a reason underneath it
+       [x] All five unit 3 sections above have real content
+       [x] Tool Inventory: all three tools, inputs WITH TYPES, a specific
            return value, and the empty case
-       [ ] Planning Loop names the branch rule and agent.py::run_agent
-       [ ] Sample Run: one full query plus the three per-tool tests, as text
-       [ ] At least four new commits
+       [x] Planning Loop names the branch rule and agent.py::run_agent
+       [x] Sample Run: one full query plus the three per-tool tests, as text
+       [x] At least four new commits
        [ ] Repository URL submitted — WRITE IT DOWN, you submit the same one
            next unit
 
      SUBMISSION CHECKLIST — unit 4
 
-       [ ] mcp_server.py exists with one tool registered
+       [x] mcp_server.py exists with one tool registered
            (or a written record of exactly where the rewire broke)
-       [ ] Run Log — Before, five criteria, five tries each
-       [ ] Real output pasted underneath, naming file and function
-       [ ] A verdict on every criterion
-       [ ] A diagnosis for every miss, naming a place AND a mechanism
-       [ ] Loop Trace, with the MCP call visible in it
-       [ ] All three failure modes triggered and handled
-       [ ] One improvement, with Run Log — After in the same format
-       [ ] What's Still Broken
-       [ ] At least four new commits
+       [x] Run Log — Before, five criteria, five tries each
+       [x] Real output pasted underneath, naming file and function
+       [x] A verdict on every criterion
+       [x] A diagnosis for every miss, naming a place AND a mechanism
+       [x] Loop Trace, with the MCP call visible in it
+       [x] All three failure modes triggered and handled
+       [x] One improvement, with Run Log — After in the same format
+       [x] What's Still Broken
+       [x] At least four new commits
        [ ] The SAME repository URL as last unit
 
      Do not delete and recreate this repository. Your commit history is what
