@@ -289,19 +289,67 @@ Scored these vintage 501s on depop for $38 and I'm obsessed with the natural fad
      `python run_eval.py --label before` runs everything and writes the table
      into results/. Paste it here and fill in the verdicts. -->
 
+From `results/run_2026-10-07_1738_before.md`: 5 tries per scenario, cache
+off, temperature 0.9, 40 model calls.
+
 | Criterion | Target | Try 1 | Try 2 | Try 3 | Try 4 | Try 5 | Verdict |
 |---|---|---|---|---|---|---|---|
-| 1.  |  |  |  |  |  |  |  |
-| 2.  |  |  |  |  |  |  |  |
-| 3.  |  |  |  |  |  |  |  |
-| 4.  |  |  |  |  |  |  |  |
-| 5.  |  |  |  |  |  |  |  |
+| 1. A matching query completes all three tools | 4 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 2. An impossible query stops before the second tool | 5 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 3. The searched item is the item every later tool receives | 5 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 4. The fit card is a postable caption that gets the facts right | 4 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 5. An empty wardrobe gets advice, not invented clothes | 4 of 5 | PASS | FAIL | FAIL | FAIL | FAIL | MISSED (1/5) |
 
-**Real output from one try**, pasted as text, naming the file and function
-that produced it:
+How each try was scored:
+
+- **1:** the session has no `error` and a non-empty `fit_card`, and the trace
+  shows all five steps.
+- **2:** the session `error` is set and names a change ("describe the item
+  with a category or style word…"). The trace stops after
+  `search_listings (via MCP)`, so `suggest_outfit` never ran.
+- **3:** in the trace, `search_listings` returned 90s Track Jacket first, and
+  `select_item`, `suggest_outfit` and `create_fit_card` all show `lst_004`.
+- **4:** every card is 3 sentences and contains `$24` and `depop`. The five
+  first sentences are all different.
+- **5:** no outfit claims the user owns anything (no "your", "you already
+  have" or "from your closet"). But tries 2–5 each contain "white ribbed tank
+  top", which is word-for-word the name of example-wardrobe item `w_003`
+  ("White ribbed tank top"). Only try 1 names none of the 10 items.
+
+**Real output from one try**, pasted as text. This is criterion 5, try 2,
+produced by `agent.py::run_agent` under `run_eval.py::main`, with the outfit
+text from `tools.py::suggest_outfit`:
 
 ```
+- stopped early: no
+- selected_item: Denim Jacket — Light Wash, Cropped ($42.0, poshmark)
+- search_results: 6
 
+Outfit suggestion:
+
+A light wash cropped Wrangler denim jacket is a versatile layering staple. For a balanced vintage streetwear look, pair it with high-waisted wide-leg black trousers and a fitted white ribbed tank top, finished off with retro sneakers. Alternatively, lean into double denim by styling the jacket over a black midi slip dress, adding chunky dark brown leather boots and a matching shoulder bag. Both outfits play with proportions since the jacket is cropped, and the neutral base colors let the light blue wash stand out.
+
+Fit card:
+
+Scored this vintage Wrangler denim jacket on Poshmark for $42 and I'm obsessed with the structured shoulders. Tossed it on over a white ribbed tank and black wide-leg trousers for a chill streetwear vibe. Can't decide if I want to add pins to it or just leave it as a blank canvas.
+
+Trace:
+
+[1] parse_query
+      in:  denim jacket under $50
+      out: {'description': 'denim jacket', 'size': None, 'max_price': 50.0}
+[2] search_listings (via MCP)
+      in:  description='denim jacket', size=None, max_price=50.0
+      out: 6 items: Denim Jacket — Light Wash, Cropped, Vintage Levi's 501 Jeans — Medium Wash, 90s Track Jacket — Navy/White Stripe … +3 more
+      →    branch: 6 results, continuing
+[3] select_item
+      out: lst_007 Denim Jacket — Light Wash, Cropped
+[4] suggest_outfit
+      in:  new_item=lst_007 Denim Jacket — Light Wash, Cropped, wardrobe=0 items
+      out: A light wash cropped Wrangler denim jacket is a versatile layering staple. For a balanced vintage streetwear l…
+[5] create_fit_card
+      in:  new_item=lst_007 Denim Jacket — Light Wash, Cropped, outfit=519 chars
+      out: Scored this vintage Wrangler denim jacket on Poshmark for $42 and I'm obsessed with the structured shoulders. …
 ```
 
 ---
