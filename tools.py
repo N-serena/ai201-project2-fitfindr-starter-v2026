@@ -256,5 +256,34 @@ def create_fit_card(outfit: str, new_item: dict) -> str:
     Test it from a terminal before you move on:
         python -c "from tools import create_fit_card; from utils.data_loader import load_listings; print(create_fit_card('jeans and white sneakers', load_listings()[0]))"
     """
-    # TODO: replace this with your implementation
-    return ""
+    if not outfit or not outfit.strip():
+        return f"No outfit to caption yet — run suggest_outfit for {new_item['title']} first."
+
+    price = _format_price(new_item["price"])
+    prompt = (
+        f"Write a caption for a social media post about this thrift find:\n"
+        f"{_describe_item(new_item)}\n\n"
+        f"How it's being styled:\n{outfit.strip()}\n\n"
+        "Rules:\n"
+        "- 2 to 4 sentences, first person, casual, like a real post.\n"
+        f"- Mention the item, the price written exactly as {price}, and "
+        f"{new_item['platform']} — each once.\n"
+        "- Be specific about the vibe of the outfit.\n"
+        "- No hashtags, no quotation marks around the caption, no preamble."
+    )
+
+    reply = generate(prompt, system=_CAPTION_SYSTEM).strip()
+    if not reply:
+        return f"Found this {new_item['title']} for {price} on {new_item['platform']} and I'm already planning the outfit."
+    return reply
+
+
+_CAPTION_SYSTEM = (
+    "You write short, specific captions for people posting their thrift finds. "
+    "You sound like a person, not a product listing."
+)
+
+
+def _format_price(price: float) -> str:
+    """$24 for whole dollars, $24.50 otherwise."""
+    return f"${price:.0f}" if price == int(price) else f"${price:.2f}"

@@ -24,7 +24,7 @@ Fixed by the starter; later steps implement against these.
 | 2 | `criteria.md` — reasons for 1–2, write 3–5 (Milestone 3) | done |
 | 3 | `search_listings` | done |
 | 4 | `suggest_outfit` — needs `GEMINI_API_KEY` | done |
-| 5 | `create_fit_card` — needs `GEMINI_API_KEY` | todo |
+| 5 | `create_fit_card` — needs `GEMINI_API_KEY` | done |
 | 6 | `run_agent` — parse, branch, session (Milestone 5) | todo |
 | 7 | README write-up (Milestone 6) | todo |
 
