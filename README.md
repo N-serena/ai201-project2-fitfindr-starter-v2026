@@ -374,14 +374,46 @@ Trace:
 
 | # | Criterion | Target | Verdict | How I decided |
 |---|---|---|---|---|
-| 1 |  |  |  |  |
-| 2 |  |  |  |  |
-| 3 |  |  |  |  |
-| 4 |  |  |  |  |
-| 5 |  |  |  |  |
+| 1 | A matching query completes all three tools | 4 of 5 | MET (5/5) | Every try ended with `error` None, a fit card, and a 5-step trace. |
+| 2 | An impossible query stops before the second tool | 5 of 5 | MET (5/5) | Every trace stops at step 2 with "branch: empty, stopping before suggest_outfit". The error names a change, and the run made 0 model calls. |
+| 3 | The searched item is the item every later tool receives | 5 of 5 | MET (5/5) | `lst_004` is first in the search result and is the item in `select_item`, `suggest_outfit` and `create_fit_card`, in all 5 traces. |
+| 4 | The fit card is a postable caption that gets the facts right | 4 of 5 | MET (5/5) | Each card has 3 sentences and contains `$24` and `depop`. All 5 first sentences differ. I counted sentences and checked the price and platform with a script, and read each card. |
+| 5 | An empty wardrobe gets advice, not invented clothes | 4 of 5 | MISSED (1/5) | No try claimed ownership, but tries 2–5 each name "white ribbed tank top", the exact name of example item `w_003`. The criterion says "names none of the 10 items", so those four fail. |
 
 **Diagnoses**
 
+**Criterion 5 (missed, 1/5).** Place: **the model's output**, shaped by the
+empty-wardrobe prompt in `tools.py::suggest_outfit`.
+
+The rest of the path was correct in every try. The trace shows
+`suggest_outfit` received `wardrobe=0 items`, so the empty branch ran, and the
+session carried `lst_007` throughout. The tool, the branch and the session are
+all fine.
+
+The mechanism is in the prompt. It forbids ownership language ("your", "you
+already have") but says nothing about which pieces to suggest. Asked for
+"kinds of pieces and colours", the model reaches for the most generic basic
+there is, a white ribbed tank top. The example wardrobe is built from those
+same basics, so the generic suggestion collides with an item name word for
+word.
+
+This is one problem, not four. All four failures are the same phrase and the
+same item (`w_003`), and every time the tank was paired with black
+trousers. The model did not invent ownership: no try says the user
+owns anything. So the miss is real against the criterion as written, but the
+check is broader than the failure I meant to catch. That's worth fixing in
+the prompt and worth knowing about the criterion.
+
+**A pattern in a criterion I met (4).** Criterion 4 passed on its own
+scenario, but the cards from the other scenarios show what it doesn't catch.
+18 of the 20 cards across the whole run open with "Scored this … on
+<platform> for $<price>". In the criterion 1 scenario, three of the five
+cards have a word-for-word identical first sentence ("Scored this little
+butterfly baby tee on depop for $18 and I am obsessed."). That is the
+`create_fit_card` prompt. It asks for the price and platform in a casual
+first-person voice, and "Scored this X on Y for $Z" is the model's default
+shape for that. The criterion was met, so no fix is owed, but I note it under
+What's Still Broken.
 
 
 ---
