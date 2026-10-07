@@ -25,7 +25,7 @@ Fixed by the starter; later steps implement against these.
 | 3 | `search_listings` | done |
 | 4 | `suggest_outfit` — needs `GEMINI_API_KEY` | done |
 | 5 | `create_fit_card` — needs `GEMINI_API_KEY` | done |
-| 6 | `run_agent` — parse, branch, session (Milestone 5) | todo |
+| 6 | `run_agent` — parse, branch, session (Milestone 5) | done |
 | 7 | README write-up (Milestone 6) | todo |
 
 Order: 1 → 2 must land before any tool code, so the commit history shows the

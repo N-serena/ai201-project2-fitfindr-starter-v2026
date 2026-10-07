@@ -2,6 +2,21 @@
 
 Newest first.
 
+## 2026-10-07 — run_agent shape
+
+- **The loop picks its next step from the session.** Each pass runs the first
+  step whose session field is still empty: parse, then search, then outfit,
+  then card. The branch on `[]` is in the search step. This keeps the
+  `check_iterations` count meaningful, at one pass per step.
+- **The query is parsed with a regex.** `under/below/max $N` gives the price
+  ceiling and `size X` gives the size. The rest of the query is the
+  description, and the search stopwords drop filler words. No model call is
+  needed, so criterion 2's path stays deterministic.
+- **The no-results message names the filter that emptied the search.** It
+  re-runs the local search with the price ceiling dropped, then with the size
+  dropped, and suggests whichever change would return results. If neither
+  would, it suggests different wording.
+
 ## 2026-10-07 — Acceptance criteria 3–5
 
 - **3, state:** compare listing `id`s from the search result, the session and
