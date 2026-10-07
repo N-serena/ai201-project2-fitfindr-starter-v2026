@@ -20,12 +20,51 @@ That last line is what your loop branches on. "Returns a list" earns nothing —
 the description has to say what is *in* the list.
 """
 
-import config  # noqa: F401 — you'll use this in search_listings
+import re
+
+import config
 from generate import generate
 from utils.data_loader import load_listings
 
 
 # ── Tool 1: search_listings ───────────────────────────────────────────────────
+
+# Words that carry no search meaning in a shopping query.
+_STOPWORDS = {
+    "a", "an", "and", "the", "for", "in", "of", "on", "with", "to", "or",
+    "i", "im", "me", "my", "want", "need", "looking", "find", "some", "something",
+    "under", "below", "less", "than", "size", "sized", "price",
+}
+
+
+def _words(text: str) -> list[str]:
+    """Lowercase alphanumeric words; dots kept so `8.5` stays one word."""
+    return re.findall(r"[a-z0-9.]+", text.lower().replace("'", ""))
+
+
+def _size_words(size: str) -> set[str]:
+    """Words of a size string with `us` dropped: 'US 8.5' -> {'8.5'}, 'S/M' -> {'s', 'm'}."""
+    return {w for w in re.split(r"[\s/()]+", size.lower()) if w and w != "us"}
+
+
+def _size_matches(wanted: str, listing_size: str) -> bool:
+    if "one size" in listing_size.lower():
+        return True
+    return bool(_size_words(wanted) & _size_words(listing_size))
+
+
+def _score(query_words: list[str], listing: dict) -> int:
+    """2 per word in title, tags or category; 1 per word only in description, colors or brand."""
+    strong = set(_words(" ".join([listing["title"], listing["category"], *listing["style_tags"]])))
+    weak = set(_words(" ".join([listing["description"], *listing["colors"], listing["brand"] or ""])))
+    score = 0
+    for word in query_words:
+        if word in strong:
+            score += 2
+        elif word in weak:
+            score += 1
+    return score
+
 
 def search_listings(
     description: str,
@@ -78,8 +117,21 @@ def search_listings(
     Test it from a terminal before you move on:
         python -c "from tools import search_listings; print(search_listings('graphic tee', max_price=30))"
     """
-    # TODO: replace this with your implementation
-    return []
+    query_words = list(dict.fromkeys(w for w in _words(description) if w not in _STOPWORDS))
+
+    scored = []
+    for listing in load_listings():
+        if max_price is not None and listing["price"] > max_price:
+            continue
+        if size and not _size_matches(size, listing["size"]):
+            continue
+        score = _score(query_words, listing)
+        if score > 0:
+            scored.append((score, listing))
+
+    # sorted() is stable, so equal scores keep dataset order
+    scored = sorted(scored, key=lambda pair: pair[0], reverse=True)
+    return [listing for _, listing in scored[: config.SEARCH_RESULT_LIMIT]]
 
 
 # ── Tool 2: suggest_outfit ────────────────────────────────────────────────────

@@ -22,7 +22,7 @@ Fixed by the starter; later steps implement against these.
 | 0 | `docs/PLAN.md`, `docs/DECISIONS.md` | done |
 | 1 | Tool Inventory in README (Milestone 2) | done |
 | 2 | `criteria.md` — reasons for 1–2, write 3–5 (Milestone 3) | done |
-| 3 | `search_listings` | todo |
+| 3 | `search_listings` | done |
 | 4 | `suggest_outfit` — needs `GEMINI_API_KEY` | todo |
 | 5 | `create_fit_card` — needs `GEMINI_API_KEY` | todo |
 | 6 | `run_agent` — parse, branch, session (Milestone 5) | todo |
