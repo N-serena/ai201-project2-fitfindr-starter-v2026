@@ -2,6 +2,16 @@
 
 Newest first.
 
+## 2026-10-07 — Every agent search goes through MCP
+
+`agent.py::search_listings` wraps `call_tool`. The main search and the two
+re-runs in `_no_results_message` all use it, so `agent.py` no longer imports
+the search tool directly. Each MCP call starts the server process, so the
+empty path makes up to three of them, and `python agent.py` still finishes
+in about 4 s. The `mcp_server.py` description states units (USD, inclusive),
+the size rule and the `[]` empty case, because a caller of the server can't
+see the README.
+
 ## 2026-10-07 — run_agent shape
 
 - **The loop picks its next step from the session.** Each pass runs the first

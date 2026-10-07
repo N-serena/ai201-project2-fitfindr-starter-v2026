@@ -34,7 +34,17 @@ spec and criteria existed before results. 4–5 are blocked until the key is in
 
 ## Unit 4 — the test
 
-Not started. Milestones 1–6 in `RUNNING.md`.
+Unit 3 is complete. Milestones are in `RUNNING.md`.
+
+| # | Step | Status |
+|---|---|---|
+| 1 | MCP: register `search_listings`, agent calls it via `call_tool` (M1) | done |
+| 2 | `trace.step()` per step + `ModelUnavailable` handler; bad-key run (M2) | todo |
+| 3 | `scenarios.py` for criteria 3–5 — commit before running (M3) | todo |
+| 4 | `run_eval.py --label before`, score, Run Log — Before (M3) | todo |
+| 5 | Verdicts and diagnoses (M4) | todo |
+| 6 | One improvement + `run_eval.py --label after` (M5) | todo |
+| 7 | What's Still Broken, Loop Trace, MCP note, checklist (M6) | todo |
 
 - Criterion 3 is scored from `--trace` output, so the `trace.step()` calls
   must log each tool's `new_item` id.
