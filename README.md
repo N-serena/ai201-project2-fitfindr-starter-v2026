@@ -41,7 +41,13 @@
 
 <!-- Three or four sentences: what a user asks for, and what they get back. -->
 
-
+You describe a thrift item in plain language, such as
+`vintage graphic tee under $30` or `platform sneakers size 8`. FitFindr
+searches 40 secondhand listings and picks the best match. It then suggests one
+or two outfits built from pieces already in your wardrobe, and writes a short
+caption you could post about the find. If nothing matches, it stops before
+calling the model and tells you which change would help: raising the price
+ceiling, dropping the size, or using different words.
 
 ---
 
@@ -129,13 +135,40 @@
      The grader checks your code against what you claim here, so the file and
      function have to be real. -->
 
-**Branch rule:**
+**Branch rule:** If `search_listings` returns an empty list, put a message in
+`session["error"]` that names what to change and return the session, without
+calling `suggest_outfit` or `create_fit_card`. Otherwise take the first result
+as `session["selected_item"]` and go to `suggest_outfit`.
+
+The message is built by `agent.py::_no_results_message`. It re-runs the local
+search with the price ceiling removed, then with the size removed. It suggests
+whichever change would return results, and suggests different wording when
+neither would.
 
 **Where it lives:** `agent.py::run_agent`
 
-**How the query is parsed:** <!-- regex, string splitting, or asking the model — say which -->
+Each time round the loop, `run_agent` increments a counter, calls
+`trace.check_iterations(count)`, and runs the first step whose session field is
+still empty. When every field is filled, it returns the session.
 
-**What moves through the session:** <!-- which fields, in what order -->
+**How the query is parsed:** With a regex, in `agent.py::parse_query`.
+`under / below / less than / max / up to $N` becomes `max_price` (a float).
+`size X` becomes `size` (a str). Whatever is left, with commas and similar
+punctuation removed, becomes `description`. The search ignores filler words
+such as "looking", "for" and "in".
+
+**What moves through the session:** in this order:
+
+1. `query`: the user's text, as typed.
+2. `parsed`: `{"description", "size", "max_price"}` from `parse_query`.
+3. `search_results`: everything `search_listings` returned. If this is `[]`,
+   `error` is set and the run stops here.
+4. `selected_item`: `search_results[0]`.
+5. `outfit_suggestion`: `suggest_outfit(selected_item, wardrobe)`.
+6. `fit_card`: `create_fit_card(outfit_suggestion, selected_item)`.
+
+`wardrobe` is set when the session is created and only read after that.
+`error` stays `None` on a full run.
 
 ---
 
@@ -149,25 +182,49 @@
 **One full query**
 
 ```
-$ python app.py ask '...'
+$ python app.py ask 'vintage graphic tee under $30'
 
+  Found:    Y2K Baby Tee — Butterfly Print — $18.0 on depop
+
+  Outfit:   Outfit 1: Y2K Baby Tee — Butterfly Print paired with Baggy straight-leg jeans, dark wash, Chunky white sneakers, and Black cropped zip hoodie. This outfit works because the fitted baby tee balances the loose jeans while the cropped hoodie adds a true early 2000s silhouette.
+
+Outfit 2: Y2K Baby Tee — Butterfly Print paired with Wide-leg khaki trousers, Chunky white sneakers, and Vintage black denim jacket. This outfit works because it blends casual streetwear with a soft vintage aesthetic, letting the butterfly graphic stand out against the neutral bottoms.
+
+  Fit card: Scored this little butterfly tee on depop for $18 and I am obsessed. I’ve been living in it layered under my black cropped zip hoodie with baggy dark wash jeans for that ultimate early 2000s silhouette. It also looks so good dressed down with khaki trousers and a vintage denim jacket when I want a softer streetwear vibe.
+
+0 model calls this session, 2 served from cache
+```
+
+The cache line means both answers were reused from the first real run of this
+same query.
+
+The empty-search path, for comparison:
+
+```
+$ python app.py ask 'designer ballgown size XXS under $5'
+
+  Nothing matched 'designer ballgown' in size XXS under $5. Try to describe the item with a category or style word like 'jacket', 'jeans', 'tee', 'y2k' or 'vintage'.
+
+0 model calls this session
 ```
 
 **The three tools, tested one at a time**
 
 ```
 $ python -c "from tools import search_listings; print(search_listings('graphic tee', max_price=30))"
-
+[{'id': 'lst_002', 'title': 'Y2K Baby Tee — Butterfly Print', 'description': 'Super cute early 2000s baby tee with butterfly graphic. Fitted crop length. Tag says medium but fits like a small.', 'category': 'tops', 'style_tags': ['y2k', 'vintage', 'graphic tee', 'cottagecore'], 'size': 'S/M', 'condition': 'excellent', 'price': 18.0, 'colors': ['white', 'pink', 'purple'], 'brand': None, 'platform': 'depop'}, {'id': 'lst_006', 'title': 'Graphic Tee — 2003 Tour Bootleg Style', 'description': 'Vintage-style bootleg tee with faded graphic. Slightly boxy fit. 100% cotton, soft and worn-in.', 'category': 'tops', 'style_tags': ['graphic tee', 'vintage', 'grunge', 'streetwear', 'band tee'], 'size': 'L', 'condition': 'good', 'price': 24.0, 'colors': ['black'], 'brand': None, 'platform': 'depop'}, {'id': 'lst_033', 'title': 'Vintage Band Tee — Faded Grey', 'description': 'Faded grey band-style tee with distressed graphic. Crew neck. Fits boxy. Well-loved but no holes or major damage.', 'category': 'tops', 'style_tags': ['vintage', 'grunge', 'band tee', 'graphic tee', 'streetwear'], 'size': 'L', 'condition': 'fair', 'price': 19.0, 'colors': ['grey', 'charcoal'], 'brand': None, 'platform': 'depop'}, {'id': 'lst_015', 'title': 'Vintage Graphic Hoodie — Faded Black', 'description': 'Faded black pullover hoodie with barely-visible vintage graphic on the chest. Cozy interior. Some pilling but adds to the worn-in look.', 'category': 'tops', 'style_tags': ['vintage', 'grunge', 'graphic', 'streetwear'], 'size': 'L', 'condition': 'fair', 'price': 26.0, 'colors': ['black', 'charcoal'], 'brand': None, 'platform': 'depop'}, {'id': 'lst_017', 'title': 'Mesh Long-Sleeve Top — Black', 'description': 'Sheer black mesh long-sleeve. Great for layering under a graphic tee or over a bralette. Stretchy material, fits true to size.', 'category': 'tops', 'style_tags': ['y2k', 'grunge', 'goth', 'layering'], 'size': 'S/M', 'condition': 'excellent', 'price': 15.0, 'colors': ['black'], 'brand': None, 'platform': 'depop'}]
 ```
 
 ```
-$ python -c "from tools import suggest_outfit; ..."
+$ python -c "from tools import suggest_outfit; from utils.data_loader import get_example_wardrobe, load_listings; print(suggest_outfit(load_listings()[0], get_example_wardrobe()))"
+Outfit One: Pair the Vintage Levi's 501 Jeans with the White ribbed tank top, the Vintage black denim jacket, and the Chunky white sneakers, accented with the Brown leather belt. This outfit works because the fitted tank and cropped jacket balance the straight-leg denim for an easy, classic casual look.
 
+Outfit Two: Style the Vintage Levi's 501 Jeans with the Oversized grey crewneck sweatshirt and the Black combat boots, wearing the Brown leather belt. This outfit works because the slouchy, oversized sweatshirt contrasts nicely with the structured mid-rise denim and rugged boots for effortless streetwear style.
 ```
 
 ```
-$ python -c "from tools import create_fit_card; ..."
-
+$ python -c "from tools import create_fit_card; from utils.data_loader import load_listings; print(create_fit_card('jeans and white sneakers', load_listings()[0]))"
+Scored these vintage 501s on depop for $38 and I'm obsessed with the natural fade at the knees. They’ve got that exact worn-in indigo wash I’ve been hunting for. Just keeping it simple today with crisp white sneakers for that easy streetwear look.
 ```
 
 ---
@@ -183,15 +240,36 @@ $ python -c "from tools import create_fit_card; ..."
 
 **Moment 1**
 
-- *What I asked for:*
-- *What came back:*
-- *What I changed:*
+- *What I asked for:* I asked Claude (Claude Code) to build `search_listings`
+  from my Tool Inventory spec: word-for-word size matching, weighted keyword
+  scoring, and `[]` when nothing matches.
+- *What came back:* A working search that passed every size example in my spec
+  (`L` doesn't match `XL`, `8` doesn't match `US 8.5`). It also showed two
+  side effects of the spec. Almost every listing is tagged `vintage`, so
+  `vintage graphic tee` fills all 10 result slots with a belt and denim shorts
+  included. And "One Size" listings leak into sized searches: `90s track
+  jacket` in size M also returns a One Size bucket hat.
+- *What I changed:* Nothing in the code. I kept both behaviours on purpose.
+  The agent only uses the top result, and the real matches always ranked
+  first (the Y2K Baby Tee and the Graphic Tee for `graphic tee`, the Track
+  Jacket for `90s track jacket`). Changing the scoring to fix the padding
+  wasn't worth the risk to criterion 1. I wrote both side effects down so I
+  know where to look in unit 4 if a search picks the wrong item.
 
 **Moment 2**
 
-- *What I asked for:*
-- *What came back:*
-- *What I changed:*
+- *What I asked for:* `create_fit_card`, with the price written exactly as
+  `$24`, so criterion 4 can check it. I asked for the same input to be run
+  three times with the cache off.
+- *What came back:* Three different captions, each with 3 sentences, `$24`
+  and `depop`. But two of the three opened with nearly the same words,
+  "Scored this … tour tee on depop for $24".
+- *What I changed:* I kept the prompt as it is. The three first sentences were
+  still different, so it passes criterion 4 as written, and changing the
+  prompt now would mean tuning it before the unit 4 run log measures it. I
+  noted the repeated "Scored this…" opener as the most likely way criterion 4
+  misses, so if two of the five unit 4 cards share a first sentence, the
+  `create_fit_card` prompt is the first thing to fix.
 
 <!-- ═══════════════════════ UNIT 4 — THE TEST ═══════════════════════
 
