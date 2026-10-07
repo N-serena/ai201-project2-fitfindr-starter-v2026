@@ -23,7 +23,7 @@ Fixed by the starter; later steps implement against these.
 | 1 | Tool Inventory in README (Milestone 2) | done |
 | 2 | `criteria.md` — reasons for 1–2, write 3–5 (Milestone 3) | done |
 | 3 | `search_listings` | done |
-| 4 | `suggest_outfit` — needs `GEMINI_API_KEY` | built; live model call untested |
+| 4 | `suggest_outfit` — needs `GEMINI_API_KEY` | done |
 | 5 | `create_fit_card` — needs `GEMINI_API_KEY` | todo |
 | 6 | `run_agent` — parse, branch, session (Milestone 5) | todo |
 | 7 | README write-up (Milestone 6) | todo |
@@ -43,5 +43,4 @@ Not started. Milestones 1–6 in `RUNNING.md`.
 
 ## Open items
 
-- `.env` is still byte-identical to `.env.example` — the key edit was not saved.
-- `test.py` fails "Python version": venv is 3.14.3, starter wants 3.13 (only 3.14 installed). Packages import fine so far.
+- Python 3.14.3 venv (starter wants 3.13); `test.py` passes 9 incl. the live model call.
