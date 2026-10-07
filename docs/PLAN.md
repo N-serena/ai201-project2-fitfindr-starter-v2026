@@ -39,7 +39,7 @@ Unit 3 is complete. Milestones are in `RUNNING.md`.
 | # | Step | Status |
 |---|---|---|
 | 1 | MCP: register `search_listings`, agent calls it via `call_tool` (M1) | done |
-| 2 | `trace.step()` per step + `ModelUnavailable` handler; bad-key run (M2) | todo |
+| 2 | `trace.step()` per step + `ModelUnavailable` handler; bad-key run (M2) | done |
 | 3 | `scenarios.py` for criteria 3–5 — commit before running (M3) | todo |
 | 4 | `run_eval.py --label before`, score, Run Log — Before (M3) | todo |
 | 5 | Verdicts and diagnoses (M4) | todo |

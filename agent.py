@@ -112,35 +112,71 @@ def run_agent(query: str, wardrobe: dict) -> dict:
     count = 0
 
     # Each pass reads the session, picks the one step it is missing, and runs it.
-    while True:
-        count += 1
-        trace.check_iterations(count)
+    try:
+        while True:
+            count += 1
+            trace.check_iterations(count)
 
-        if not session["parsed"]:
-            session["parsed"] = parse_query(query)
+            if not session["parsed"]:
+                session["parsed"] = parse_query(query)
+                trace.step("parse_query", inputs=query, returned=repr(session["parsed"]))
 
-        elif session["selected_item"] is None:
-            parsed = session["parsed"]
-            session["search_results"] = search_listings(
-                parsed["description"], parsed["size"], parsed["max_price"]
-            )
-            if not session["search_results"]:
-                session["error"] = _no_results_message(parsed)
+            elif session["selected_item"] is None:
+                parsed = session["parsed"]
+                session["search_results"] = search_listings(
+                    parsed["description"], parsed["size"], parsed["max_price"]
+                )
+                found = session["search_results"]
+                trace.step(
+                    "search_listings (via MCP)",
+                    inputs=f"description={parsed['description']!r}, size={parsed['size']!r}, "
+                           f"max_price={parsed['max_price']!r}",
+                    returned=found,
+                    note="branch: empty, stopping before suggest_outfit" if not found
+                         else f"branch: {len(found)} results, continuing",
+                )
+                if not found:
+                    session["error"] = _no_results_message(parsed)
+                    return session
+                session["selected_item"] = found[0]
+                trace.step("select_item", returned=_item_ref(session["selected_item"]))
+
+            elif session["outfit_suggestion"] is None:
+                item = session["selected_item"]
+                session["outfit_suggestion"] = suggest_outfit(item, session["wardrobe"])
+                trace.step(
+                    "suggest_outfit",
+                    inputs=f"new_item={_item_ref(item)}, "
+                           f"wardrobe={len(session['wardrobe'].get('items') or [])} items",
+                    returned=session["outfit_suggestion"],
+                )
+
+            elif session["fit_card"] is None:
+                item = session["selected_item"]
+                session["fit_card"] = create_fit_card(session["outfit_suggestion"], item)
+                trace.step(
+                    "create_fit_card",
+                    inputs=f"new_item={_item_ref(item)}, "
+                           f"outfit={len(session['outfit_suggestion'])} chars",
+                    returned=session["fit_card"],
+                )
+
+            else:
                 return session
-            session["selected_item"] = session["search_results"][0]
 
-        elif session["outfit_suggestion"] is None:
-            session["outfit_suggestion"] = suggest_outfit(
-                session["selected_item"], session["wardrobe"]
-            )
+    except ModelUnavailable as exc:
+        found = session["selected_item"]
+        session["error"] = (
+            f"{exc} The search still worked"
+            + (f" — it found {found['title']} (${found['price']:g} on {found['platform']})." if found else ".")
+        )
+        trace.step("model unavailable", returned=str(exc), note="stopping, error set in session")
+        return session
 
-        elif session["fit_card"] is None:
-            session["fit_card"] = create_fit_card(
-                session["outfit_suggestion"], session["selected_item"]
-            )
 
-        else:
-            return session
+def _item_ref(item: dict) -> str:
+    """How a listing appears in the trace: id first, so tools' inputs can be compared."""
+    return f"{item['id']} {item['title']}"
 
 
 # ── search over MCP ───────────────────────────────────────────────────────────
