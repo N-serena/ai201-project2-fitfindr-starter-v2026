@@ -78,6 +78,24 @@ the facts are things I can check by reading, and the distinct-first-sentence
 check catches a cache or temperature problem. 5 of 5 would assume the model
 always follows formatting instructions, and a lite model doesn't.
 
+> **Revised in unit 4:** For one matching query run 5 times with the cache
+> off, each fit card is 2 to 4 sentences long, contains the selected item's
+> exact price and its platform name, and opens with two words that no more
+> than one other card of the five also opens with — in at least 4 of 5
+> tries. A try passes only if its card meets all four parts. The first two
+> words are compared lowercased.
+>
+> **Why revised:** "No two start with the same first sentence" measured the
+> wrong thing. It was meant to catch captions that come out as one template,
+> but a first sentence that differs by a single word ("Scored this 2003 tour
+> tee…" against "Scored this vintage 2003 tour tee…") counted as different.
+> So the original passed 5/5 while 18 of the 20 cards in the after run opened
+> with "Scored this". The opening two words are what make every card read the
+> same, and they can be counted. The target stays at 4 of 5; only what counts
+> as different changed. Re-scored against this version, criterion 4 scores
+> 0/5 in both the before and the after run (MISSED). The original verdict,
+> MET (5/5) against the original wording, stays in the README as it was.
+
 ---
 
 ## 5. An empty wardrobe gets advice, not invented clothes

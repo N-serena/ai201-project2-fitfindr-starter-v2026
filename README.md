@@ -442,6 +442,13 @@ first-person voice, and "Scored this X on Y for $Z" is the model's default
 shape for that. The criterion was met, so no fix is owed, but I note it under
 What's Still Broken.
 
+> **Criterion 4 revised (stretch work, after both runs).** The pattern above
+> showed the criterion measured the wrong thing, so it is revised underneath
+> the original in `criteria.md`. The original line is untouched. Against the
+> revised wording, criterion 4 is **MISSED (0/5)** in both the before and the
+> after run. The verdicts in the tables above are left as they were, against
+> the original wording. The re-scoring is under Stretch Features, 3.
+
 
 ---
 
@@ -818,6 +825,39 @@ What is still off:
   fit-card calls, so a back-to-back eval can go over 15 requests a minute.
   `generate.py`'s retry-with-backoff on a 429 is what catches it; the
   `after2` run in stretch 3 is the test of that.
+
+**3. A second improvement — part 1: criterion 4 revised and re-scored.** The
+original criterion 4 counted two first sentences as different if a single
+word differed, so it passed while nearly every card opened the same way. The
+revision is written underneath the original in `criteria.md`. A try now also
+needs its opening two words to be shared by at most one other card of the
+five. The target stays at 4 of 5.
+
+Both existing run logs re-scored, with each card's opening two words. The
+criterion 4 scenario is the scored row; the other scenarios are shown as
+evidence that the pattern isn't specific to one item.
+
+| Run | Scenario | Openings (tries 1–5) | Try 1 | Try 2 | Try 3 | Try 4 | Try 5 | Result |
+|---|---|---|---|---|---|---|---|---|
+| before | **4. fit card** (`band tee under $25`) | scored this ×5 | FAIL | FAIL | FAIL | FAIL | FAIL | **MISSED (0/5)** |
+| after | **4. fit card** (`band tee under $25`) | scored this ×5 | FAIL | FAIL | FAIL | FAIL | FAIL | **MISSED (0/5)** |
+| before | 1. matching query | scored this ×5 | FAIL | FAIL | FAIL | FAIL | FAIL | 0/5 |
+| before | 3. state | snagged, scored, found, scored, scored | PASS | FAIL | PASS | FAIL | FAIL | 2/5 |
+| before | 5. empty wardrobe | scored this ×5 | FAIL | FAIL | FAIL | FAIL | FAIL | 0/5 |
+| after | 1. matching query | scored ×2, found, scored ×2 | FAIL | FAIL | PASS | FAIL | FAIL | 1/5 |
+| after | 3. state | found, scored ×4 | PASS | FAIL | FAIL | FAIL | FAIL | 1/5 |
+| after | 5. empty wardrobe | scored this ×5 | FAIL | FAIL | FAIL | FAIL | FAIL | 0/5 |
+
+Every card in every scenario still has 2–4 sentences (all are 3), the exact
+price and the platform. The only part that fails is the opening.
+
+**Diagnosis.** Place: **the model's output**, driven by the
+`tools.py::create_fit_card` prompt. The prompt asks for first person and
+casual, and requires the item, the exact price and the platform in the same
+caption. The shortest natural sentence that does all of that is "Scored this
+<item> on <platform> for $<price>". The model writes it first nearly every
+time, whatever the item. It is one problem across all four scenarios that
+make a card, not four. The improvement and its `after2` run are part 2.
 
 <!-- ═════════════════════════════════════════════════════════════════════
 
