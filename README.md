@@ -271,6 +271,33 @@ Scored these vintage 501s on depop for $38 and I'm obsessed with the natural fad
   misses, so if two of the five unit 4 cards share a first sentence, the
   `create_fit_card` prompt is the first thing to fix.
 
+**Moment 3 (unit 4)**
+
+- *What I asked for:* Claude scored the before run and wrote the diagnosis,
+  using a small script to count sentences, check prices and platforms, and
+  match outfit text against the 10 wardrobe names.
+- *What came back:* Correct verdicts, but two wrong numbers in the first
+  draft of the diagnosis. It said "22 of 25 cards" open with "Scored this…",
+  but the impossible-query scenario makes no cards, so the real count is 18
+  of 20. It also said the white tank was paired with "trousers or jeans"; it
+  was trousers every time.
+- *What I changed:* Every number in the diagnosis was re-counted against the
+  results file with `grep` before it went in, and both were corrected.
+
+**Moment 4 (unit 4)**
+
+- *What I asked for:* A prompt fix for the criterion 5 miss, where the model
+  kept naming "white ribbed tank top".
+- *What came back:* The first draft of the new instruction listed the exact
+  failing phrases as things not to say ("not 'white ribbed tank top', 'black
+  combat boots'"). That would have passed the check by teaching the prompt
+  the test's answer, not by fixing why the model reached for fully specified
+  basics.
+- *What I changed:* The named examples came out before anything was run. The
+  instruction states the general rule instead: describe pieces by role, shape
+  and colour family, and never spell out one exact garment. No wardrobe item
+  is named anywhere in the prompt.
+
 <!-- ═══════════════════════ UNIT 4 — THE TEST ═══════════════════════
 
      Don't fill these in during unit 3.
@@ -627,6 +654,39 @@ or untested.
 - **The bad-key path isn't in `scenarios.py`.** It needs a different
   environment, so it was triggered by hand once (above) and not run five
   times.
+
+---
+
+## Stretch Features
+
+Declared here before any of them were built. The required unit 4 work above,
+including both run logs, was finished first. These go beyond the "MCP move
+plus one improvement" rule on purpose, and each one is written up below as
+it lands.
+
+1. **Retry with looser constraints.** When a search comes back empty and the
+   query named a size, `run_agent` retries once without the size. If that
+   finds something, the run continues and the session records what was
+   dropped, so the user sees "no M in stock — showing other sizes". If the
+   retry is also empty, it stops as before. The criterion 2 query (ballgown,
+   XXS, under $5) is still empty without the size, so criterion 2's path is
+   unchanged.
+2. **A second tool on MCP: `create_fit_card`.** It is registered in
+   `mcp_server.py` next to `search_listings` and called through `call_tool`.
+   Two things to check: a model failure inside the server reaches the agent as
+   an `MCPError`, not a `ModelUnavailable`, so the bad-key handler has to still
+   work. And `generate.py`'s rate limiter counts per process, while every MCP
+   call is a new process.
+3. **A second improvement: the fit-card opener.** 18 of 20 cards in the after
+   run open with "Scored this…". First criterion 4 is revised underneath the
+   original in `criteria.md`, because it measured the wrong thing, and both
+   existing run logs are re-scored against it. Then the `create_fit_card`
+   prompt is changed and measured with `run_eval.py --label after2` in the
+   same table format.
+
+**Results**
+
+<!-- filled in as each one lands -->
 
 <!-- ═════════════════════════════════════════════════════════════════════
 

@@ -46,6 +46,16 @@ Unit 3 is complete. Milestones are in `RUNNING.md`.
 | 6 | One improvement + `run_eval.py --label after` (M5) | done |
 | 7 | What's Still Broken, Loop Trace, MCP note, checklist (M6) | done |
 
+## Unit 4 — stretch features
+
+| # | Step | Status |
+|---|---|---|
+| S0 | Declare stretch in README; unit 4 moments in How I Used AI | done |
+| S1 | Empty search retries once without size, says what it dropped | todo |
+| S2 | `create_fit_card` on MCP; MCPError mapped so bad key still handled | todo |
+| S3 | Revise criterion 4 under the original; re-score before/after logs | todo |
+| S4 | Fit-card opener prompt fix; `run_eval.py --label after2` | todo |
+
 - Criterion 3 is scored from `--trace` output, so the `trace.step()` calls
   must log each tool's `new_item` id.
 - `scenarios.py` needs: a repeated matching query (criteria 3 and 4) and an
