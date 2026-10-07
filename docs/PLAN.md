@@ -43,7 +43,7 @@ Unit 3 is complete. Milestones are in `RUNNING.md`.
 | 3 | `scenarios.py` for criteria 3–5 — commit before running (M3) | done |
 | 4 | `run_eval.py --label before`, score, Run Log — Before (M3) | done |
 | 5 | Verdicts and diagnoses (M4) | done |
-| 6 | One improvement + `run_eval.py --label after` (M5) | todo |
+| 6 | One improvement + `run_eval.py --label after` (M5) | done |
 | 7 | What's Still Broken, Loop Trace, MCP note, checklist (M6) | todo |
 
 - Criterion 3 is scored from `--trace` output, so the `trace.step()` calls

@@ -2,6 +2,16 @@
 
 Newest first.
 
+## 2026-10-07 — Unit 4 improvement: generic pieces in empty-wardrobe advice
+
+Criterion 5 missed 1/5 because the model named "white ribbed tank top", which
+is word for word example item `w_003`. The fix is a prompt rule: describe
+pieces by role, shape and colour family, never as one fully specified garment.
+No wardrobe name appears in the prompt, so the fix targets the mechanism and
+not the check. Criterion 5 went from 1/5 to 5/5, criteria 1–4 held at 5/5, and
+the advice got vaguer. The "Scored this…" fit-card opener was left alone:
+criterion 4 was met, and one change per run keeps the before/after readable.
+
 ## 2026-10-07 — Every agent search goes through MCP
 
 `agent.py::search_listings` wraps `call_tool`. The main search and the two

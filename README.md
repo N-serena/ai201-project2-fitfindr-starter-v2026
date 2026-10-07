@@ -458,26 +458,54 @@ full. -->
 
      `python run_eval.py --label after` -->
 
-**What I changed:**
+**What I changed:** One instruction in the empty-wardrobe prompt in
+`tools.py::suggest_outfit`. The old prompt asked for outfits "described by
+kinds of pieces and colours (for example 'straight-leg dark jeans')". The new
+one asks for each piece by its role, shape and colour family ("a fitted top in
+a light neutral", "dark, relaxed trousers"). It also says never to spell out
+one exact garment with fabric, cut and colour all together, because that reads
+like an item the person owns. Only the thrifted piece gets full detail. I
+didn't name any wardrobe item in the prompt, so the fix targets the mechanism
+and not the four words the check looks for. Nothing else changed: the
+filled-wardrobe prompt, the fit card, the loop and the search are untouched.
 
-**Which failure it was meant to fix:**
+**Which failure it was meant to fix:** Criterion 5, missed 1/5. The diagnosis
+put it in the model's output. The empty-wardrobe prompt let the model pick a
+fully specified everyday basic ("fitted white ribbed tank top"), which matched
+example item `w_003` word for word.
 
 ### Run Log — After
 
+From `results/run_2026-10-07_1757_after.md`: same five scenarios, 5 tries
+each, cache off, 40 model calls.
+
 | Criterion | Target | Try 1 | Try 2 | Try 3 | Try 4 | Try 5 | Verdict |
 |---|---|---|---|---|---|---|---|
-| 1.  |  |  |  |  |  |  |  |
-| 2.  |  |  |  |  |  |  |  |
-| 3.  |  |  |  |  |  |  |  |
-| 4.  |  |  |  |  |  |  |  |
-| 5.  |  |  |  |  |  |  |  |
+| 1. A matching query completes all three tools | 4 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 2. An impossible query stops before the second tool | 5 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 3. The searched item is the item every later tool receives | 5 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 4. The fit card is a postable caption that gets the facts right | 4 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 5. An empty wardrobe gets advice, not invented clothes | 4 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
 
-**Did it help, and how do I know:**
+**Did it help, and how do I know:** Yes for criterion 5, which went from 1/5
+to 5/5. I checked every outfit against the 10 example-wardrobe names, and none
+appear in any of the five tries. Before, four tries contained "white ribbed
+tank top". The tops now read "a fitted ribbed top", "a fitted top in a light
+neutral" and "a fitted top in a dark neutral".
 
-<!-- If it made things worse, say that. Honestly reported, that earns full
-     credit and is more interesting than one that worked. -->
+One try needed a judgement call. Try 5 contains "your", in "depending on your
+preferred daily aesthetic". That refers to the user's taste, not to something
+they own, so I scored it PASS.
 
+Criteria 1–4 stayed at 5/5, so the change didn't break the other paths. That
+is expected, since only the empty-wardrobe branch's prompt changed.
 
+The cost: the advice got vaguer. Try 5 suggests "a fluid, wide-bottom piece
+in a dark neutral", which is harder to shop for than "black wide-leg
+trousers". Try 5 also opened with the price spelled out ("At forty-two
+dollars…"), which the outfit prompt never asked for. So the fix traded some
+usefulness for the guarantee. And five tries is a small sample, so I'd want
+more runs before calling the white-tank collision gone for good.
 
 ---
 
