@@ -508,6 +508,11 @@ $ python app.py ask 'platform sneakers size 8 under $20' --trace
 Two steps instead of five, and no model calls. The platform sneakers exist
 in size 8 but cost $48, so the message points at the price ceiling.
 
+This trace is from the required unit 4 agent. Since stretch feature 1, an
+empty search that named a size retries once without it, so this exact query
+now finds canvas sneakers in another size. The current traces are under
+**Stretch Features**.
+
 **The other two failure modes**
 
 The model can't be reached. This run used a deliberately wrong key, set for
@@ -686,7 +691,72 @@ it lands.
 
 **Results**
 
-<!-- filled in as each one lands -->
+**1. Retry with looser constraints — done.** In `agent.py::run_agent`, the
+search step checks for an empty result with a size set. If it finds one, it
+records `session["dropped"] = {"size": ...}` and goes round the loop once more.
+The next pass searches with `size=None`. If that finds something,
+`session["notice"]` says what was dropped and what size the item actually is,
+and `app.py` prints it above the result. If the retry is also empty, the run
+stops as before, and the message says the retry already happened. It only
+retries once, because the retry only runs while `session["dropped"]` is unset.
+
+The size was the only thing in the way:
+
+```
+$ python app.py ask 'denim jacket size XL' --trace
+[1] parse_query
+      in:  denim jacket size XL
+      out: {'description': 'denim jacket', 'size': 'XL', 'max_price': None}
+[2] search_listings (via MCP)
+      in:  description='denim jacket', size='XL', max_price=None
+      out: [] (empty)
+      →    branch: empty, retrying once without size XL
+[3] search_listings (via MCP)
+      in:  description='denim jacket', size=None, max_price=None
+      out: 6 items: Denim Jacket — Light Wash, Cropped, Vintage Levi's 501 Jeans — Medium Wash, 90s Track Jacket — Navy/White Stripe … +3 more
+      →    branch: 6 results, continuing
+[4] select_item
+      out: lst_007 Denim Jacket — Light Wash, Cropped
+[5] suggest_outfit
+      in:  new_item=lst_007 Denim Jacket — Light Wash, Cropped, wardrobe=10 items
+      out: Outfit one combines the Wrangler denim jacket, white ribbed tank top, baggy straight-leg jeans, brown leather …
+[6] create_fit_card
+      in:  new_item=lst_007 Denim Jacket — Light Wash, Cropped, outfit=610 chars
+      out: Scored this vintage Wrangler denim jacket on Poshmark for $42 and I am obsessed with the structured shoulders.…
+
+  Note:     Nothing in size XL, so I dropped the size filter. This one is size S.
+  Found:    Denim Jacket — Light Wash, Cropped — $42.0 on poshmark
+```
+
+The criterion 2 query is still impossible after the retry, so it stops with
+no model calls:
+
+```
+$ python app.py ask 'designer ballgown size XXS under $5' --trace
+[1] parse_query
+      in:  designer ballgown size XXS under $5
+      out: {'description': 'designer ballgown', 'size': 'XXS', 'max_price': 5.0}
+[2] search_listings (via MCP)
+      in:  description='designer ballgown', size='XXS', max_price=5.0
+      out: [] (empty)
+      →    branch: empty, retrying once without size XXS
+[3] search_listings (via MCP)
+      in:  description='designer ballgown', size=None, max_price=5.0
+      out: [] (empty)
+      →    branch: empty, stopping before suggest_outfit
+
+  Nothing matched 'designer ballgown' in size XXS under $5. Try to describe the item with a category or style word like 'jacket', 'jeans', 'tee', 'y2k' or 'vintage'. (Already retried without size XXS.)
+
+0 model calls this session
+```
+
+What it gets wrong: dropping the size can change *what* is found, not just
+its size. `platform sneakers size 8 under $20` now returns the Low-Top
+Canvas Sneakers (US 9, $20). They match on "sneakers" but are not platforms,
+because the real platform sneakers cost $48 and the price ceiling still
+applies. The notice is honest about the size but says nothing about the
+weaker match. A fix would be to only accept a retry result that scores as
+well as a sized match would have.
 
 <!-- ═════════════════════════════════════════════════════════════════════
 

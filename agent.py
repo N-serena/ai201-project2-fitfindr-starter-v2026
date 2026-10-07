@@ -47,6 +47,8 @@ def new_session(query: str, wardrobe: dict) -> dict:
         "outfit_suggestion": None,   # what suggest_outfit returned
         "fit_card": None,            # what create_fit_card returned
         "error": None,               # set when the run ended early
+        "dropped": None,             # filter removed for the one retry, e.g. {"size": "M"}
+        "notice": None,              # told to the user when a retry found something
     }
 
 
@@ -123,21 +125,34 @@ def run_agent(query: str, wardrobe: dict) -> dict:
 
             elif session["selected_item"] is None:
                 parsed = session["parsed"]
+                size = None if session["dropped"] else parsed["size"]
                 session["search_results"] = search_listings(
-                    parsed["description"], parsed["size"], parsed["max_price"]
+                    parsed["description"], size, parsed["max_price"]
                 )
                 found = session["search_results"]
+                can_retry = not found and size is not None
                 trace.step(
                     "search_listings (via MCP)",
-                    inputs=f"description={parsed['description']!r}, size={parsed['size']!r}, "
+                    inputs=f"description={parsed['description']!r}, size={size!r}, "
                            f"max_price={parsed['max_price']!r}",
                     returned=found,
-                    note="branch: empty, stopping before suggest_outfit" if not found
+                    note=f"branch: empty, retrying once without size {size}" if can_retry
+                         else "branch: empty, stopping before suggest_outfit" if not found
                          else f"branch: {len(found)} results, continuing",
                 )
+                if can_retry:
+                    session["dropped"] = {"size": size}
+                    continue
                 if not found:
                     session["error"] = _no_results_message(parsed)
+                    if session["dropped"]:
+                        session["error"] += f" (Already retried without size {parsed['size']}.)"
                     return session
+                if session["dropped"]:
+                    session["notice"] = (
+                        f"Nothing in size {parsed['size']}, so I dropped the size filter. "
+                        f"This one is size {found[0]['size']}."
+                    )
                 session["selected_item"] = found[0]
                 trace.step("select_item", returned=_item_ref(session["selected_item"]))
 
@@ -244,6 +259,8 @@ def _show(session: dict) -> None:
         return
 
     item = session["selected_item"] or {}
+    if session.get("notice"):
+        print(f"  note:     {session['notice']}")
     print(f"  found:    {item.get('title')} — ${item.get('price')} on {item.get('platform')}")
     print(f"  outfit:   {session['outfit_suggestion']}")
     print(f"  fit card: {session['fit_card']}")

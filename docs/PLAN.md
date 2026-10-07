@@ -51,7 +51,7 @@ Unit 3 is complete. Milestones are in `RUNNING.md`.
 | # | Step | Status |
 |---|---|---|
 | S0 | Declare stretch in README; unit 4 moments in How I Used AI | done |
-| S1 | Empty search retries once without size, says what it dropped | todo |
+| S1 | Empty search retries once without size, says what it dropped | done |
 | S2 | `create_fit_card` on MCP; MCPError mapped so bad key still handled | todo |
 | S3 | Revise criterion 4 under the original; re-score before/after logs | todo |
 | S4 | Fit-card opener prompt fix; `run_eval.py --label after2` | todo |
