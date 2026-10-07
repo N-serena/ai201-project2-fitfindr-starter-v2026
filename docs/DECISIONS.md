@@ -2,6 +2,19 @@
 
 Newest first.
 
+## 2026-10-07 — Acceptance criteria 3–5
+
+- **3, state:** compare listing `id`s from the search result, the session and
+  each tool's input. The check is an exact match, and the path has no model
+  in it, so the target is 5 of 5.
+- **4, fit card:** a sentence count, the exact price, the platform name, and a
+  distinct first sentence across runs, with a target of 4 of 5. Each of these
+  is checked by reading, and the first-sentence check also catches cache or
+  temperature mistakes.
+- **5, empty wardrobe:** chosen because it is a unit 4 failure mode and
+  depends on the model obeying an instruction. The model might invent clothes
+  the user doesn't own.
+
 ## 2026-10-07 — Tool specs (README Tool Inventory)
 
 - **Size match is word-for-word.** The listing sizes mix formats (`S/M`,

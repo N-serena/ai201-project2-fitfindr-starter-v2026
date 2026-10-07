@@ -25,9 +25,13 @@ Given a query that matches at least one listing, the agent completes all three
 tool calls and returns a fit card — in at least 4 of 5 tries.
 
 **Why this target:**
-<!-- Why 4 of 5 and not 5 of 5? Something about your search, probably —
-     "my search is a plain keyword match and some phrasings will miss" is a
-     real answer. -->
+Everything before the first model call is local and deterministic: the query
+is parsed with a regex and `search_listings` is a keyword match over a fixed
+file, so a matching query finds its item every time. The miss I allow is on
+the model side. A complete run makes two `generate()` calls on the free tier
+(15 requests a minute), and the eval runs scenarios back to back, so one try
+in five can end with a rate-limit error that outlasts the retries, or a
+timeout, before a fit card exists.
 
 ---
 
@@ -37,66 +41,60 @@ Given a query that matches no listings, the agent stops before calling
 `suggest_outfit` and returns a message naming what to change — 5 of 5 tries.
 
 **Why this target:**
-<!-- Why is 5 of 5 reasonable here when criterion 1 isn't? What's different
-     about this path? -->
+This path never reaches the model. Parsing and search are deterministic, so
+the same impossible query gives `[]` every time, and the branch on `[]` is a
+plain `if`. There is no variance for a miss to come from, so anything short of
+5 of 5 is a bug in my loop.
 
 ---
 
-## 3. Something about state
+## 3. The searched item is the item every later tool receives
 
-<!-- YOU WRITE THIS ONE.
-
-     How would you know that the item your search found is the same item the
-     next tool received? Name something countable or observable.
-
-     This is the criterion people find hardest, because state failure doesn't
-     look like state failure — it looks like a tool problem. Something that
-     compares session["selected_item"] against what actually reached
-     suggest_outfit is the shape you're after. -->
-
-
+In a completed run, the `id` of `session["selected_item"]` equals the `id` of
+`session["search_results"][0]`, and the `new_item` passed to `suggest_outfit`
+and to `create_fit_card` (as shown by `--trace`) has that same `id` — all three
+match in 5 of 5 tries.
 
 **Why this target:**
-
-
+Moving one dict through the session involves no model and no randomness. If
+the id ever differs, the loop is reading a stale or overwritten field, which
+is a wiring bug. A lower target would mean accepting captions about an item
+the user never saw.
 
 ---
 
-## 4. Something about the fit card
+## 4. The fit card is a postable caption that gets the facts right
 
-<!-- YOU WRITE THIS ONE.
-
-     The fit card calls a model, so the same input can produce different words
-     each time. That's not a bug — it's the nature of the tool. So what would
-     make it acceptable?
-
-     Think about what you'd actually be unhappy to see. A caption that never
-     mentions the price? Two different items producing the same opening
-     sentence? A card longer than a caption anyone would post? Any of those can
-     be turned into a number. -->
-
-
+For one matching query run 5 times with the cache off, each fit card is 2 to 4
+sentences long, contains the selected item's exact price (for example `$24`)
+and its platform name, and no two of the five start with the same first
+sentence — in at least 4 of 5 tries.
 
 **Why this target:**
-
-
+The caption comes from a small model at temperature 0.9. The prompt asks for
+the price and platform, but the model sometimes rewrites a price as "24
+bucks", drops the platform, or runs to five sentences. The length limit and
+the facts are things I can check by reading, and the distinct-first-sentence
+check catches a cache or temperature problem. 5 of 5 would assume the model
+always follows formatting instructions, and a lite model doesn't.
 
 ---
 
-## 5. Your choice
+## 5. An empty wardrobe gets advice, not invented clothes
 
-<!-- YOU WRITE THIS ONE TOO.
-
-     Pick something you actually care about getting right. Speed, the empty
-     wardrobe path, what happens when the model can't be reached, whether the
-     search respects a price ceiling — anything, as long as it names a number
-     or an observable outcome. -->
-
-
+Given a matching query and an empty wardrobe, the agent still returns a
+non-empty outfit suggestion and a fit card, and the outfit suggestion names
+none of the 10 items from the example wardrobe and doesn't claim the user
+already owns anything ("you already have", "from your closet") — in at least
+4 of 5 tries.
 
 **Why this target:**
-
-
+`suggest_outfit` switches to a general-advice prompt when `wardrobe["items"]`
+is empty, so the code path itself is deterministic. The risk is the model:
+asked to style a piece, it tends to invent "your white sneakers" even when
+told the user owns nothing. That is the failure I care about, because it
+recommends clothes the user doesn't have. I allow one slip in five because
+the guard is only a prompt instruction.
 
 ---
 

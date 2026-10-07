@@ -21,7 +21,7 @@ Fixed by the starter; later steps implement against these.
 |---|---|---|
 | 0 | `docs/PLAN.md`, `docs/DECISIONS.md` | done |
 | 1 | Tool Inventory in README (Milestone 2) | done |
-| 2 | `criteria.md` — reasons for 1–2, write 3–5 (Milestone 3) | todo |
+| 2 | `criteria.md` — reasons for 1–2, write 3–5 (Milestone 3) | done |
 | 3 | `search_listings` | todo |
 | 4 | `suggest_outfit` — needs `GEMINI_API_KEY` | todo |
 | 5 | `create_fit_card` — needs `GEMINI_API_KEY` | todo |
@@ -35,6 +35,11 @@ spec and criteria existed before results. 4–5 are blocked until the key is in
 ## Unit 4 — the test
 
 Not started. Milestones 1–6 in `RUNNING.md`.
+
+- Criterion 3 is scored from `--trace` output, so the `trace.step()` calls
+  must log each tool's `new_item` id.
+- `scenarios.py` needs: a repeated matching query (criteria 3 and 4) and an
+  empty-wardrobe run tagged criterion 5.
 
 ## Open items
 
