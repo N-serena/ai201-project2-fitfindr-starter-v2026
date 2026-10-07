@@ -20,7 +20,7 @@ Fixed by the starter; later steps implement against these.
 | # | Step | Status |
 |---|---|---|
 | 0 | `docs/PLAN.md`, `docs/DECISIONS.md` | done |
-| 1 | Tool Inventory in README (Milestone 2) | todo |
+| 1 | Tool Inventory in README (Milestone 2) | done |
 | 2 | `criteria.md` — reasons for 1–2, write 3–5 (Milestone 3) | todo |
 | 3 | `search_listings` | todo |
 | 4 | `suggest_outfit` — needs `GEMINI_API_KEY` | todo |

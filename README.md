@@ -59,24 +59,60 @@
 
 ### `search_listings`
 
-- **What it does:**
-- **Inputs:** <!-- name and type each: `max_price` (float), not "a price" -->
-- **Returns:**
-- **When it has nothing:**
+- **What it does:** Filters the 40 listings in `data/listings.json` by price
+  and size, then scores each remaining listing by how many words from the
+  description appear in it. A word that matches the title, `style_tags` or
+  `category` scores 2. A word that matches only the `description` or `colors`
+  scores 1. Common words ("a", "the", "for", "looking") are ignored. No model
+  call.
+- **Inputs:** `description` (str): keywords such as `"vintage graphic tee"`.
+  `size` (str or None): `None` skips the size filter. `max_price` (float or
+  None): an inclusive ceiling, and `None` skips the price filter.
+  **Size match rule:** both sizes are lowercased and split on spaces, `/` and
+  parentheses, and the word `us` is dropped. A listing matches when any of its
+  size words equals any requested size word, so `M` matches `S/M` and `M/L`,
+  `L` matches `L/XL` but not `XL`, `8` matches `US 8` but not `US 8.5`, `S`
+  matches `S/M` but not `US 9` or `XS`, and `W30` matches `W30 L30`. A listing whose size says "One Size" matches any requested size.
+- **Returns:** A `list[dict]` of at most `config.SEARCH_RESULT_LIMIT` (10)
+  listing dicts, highest score first, with ties in dataset order. Each dict is
+  the full listing: `id`, `title`, `description`, `category`, `style_tags`
+  (list), `size`, `condition`, `price` (float), `colors` (list), `brand` (str
+  or None), `platform`.
+- **When it has nothing:** It returns `[]`, an empty list, never `None` and
+  never an exception. That happens when the filters leave nothing or every
+  remaining listing scores 0. The loop stops when it sees `[]`.
 
 ### `suggest_outfit`
 
-- **What it does:**
-- **Inputs:**
-- **Returns:**
-- **When it has nothing:**
+- **What it does:** Asks the model for one or two outfits built around the
+  thrifted item. With a wardrobe, every outfit has to name pieces the user
+  already owns, by their `name`. Without one, the model gives general styling
+  advice for the item: what kinds of pieces and colours go with it.
+- **Inputs:** `new_item` (dict): one listing dict from `search_listings`.
+  `wardrobe` (dict): has an `items` key holding a list of wardrobe-item dicts
+  (`id`, `name`, `category`, `colors`, `style_tags`, `notes`), and that list
+  may be empty.
+- **Returns:** A non-empty `str` of plain-text outfit suggestions, a short
+  paragraph or a few lines per outfit.
+- **When it has nothing:** An empty `wardrobe["items"]` is not an error. It
+  switches to the general-advice prompt and still returns a non-empty string.
+  If the model comes back blank, it returns a fixed fallback sentence that
+  names the item. A `ModelUnavailable` from `generate()` is passed up to
+  `run_agent` unchanged.
 
 ### `create_fit_card`
 
-- **What it does:**
-- **Inputs:**
-- **Returns:**
-- **When it has nothing:**
+- **What it does:** Asks the model for a short social-media caption about the
+  find. It should read like a real post, mention the item's title, price and
+  platform once each, and describe the vibe of the outfit.
+- **Inputs:** `outfit` (str): the string `suggest_outfit` returned.
+  `new_item` (dict): the same listing dict that went into `suggest_outfit`.
+- **Returns:** A `str` caption of 2 to 4 sentences.
+- **When it has nothing:** If `outfit` is empty or only whitespace, it returns
+  `"No outfit to caption yet — run suggest_outfit for <title> first."` and
+  makes no model call. If the model comes back blank, it returns a plain
+  fallback caption built from the title, price and platform. A
+  `ModelUnavailable` is passed up to `run_agent` unchanged.
 
 ---
 
