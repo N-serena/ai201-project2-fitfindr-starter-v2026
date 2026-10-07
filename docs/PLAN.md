@@ -54,7 +54,7 @@ Unit 3 is complete. Milestones are in `RUNNING.md`.
 | S1 | Empty search retries once without size, says what it dropped | done |
 | S2 | `create_fit_card` on MCP; MCPError mapped so bad key still handled | done |
 | S3 | Revise criterion 4 under the original; re-score before/after logs | done |
-| S4 | Fit-card opener prompt fix; `run_eval.py --label after2` | todo |
+| S4 | Fit-card opener prompt fix; `run_eval.py --label after2` | done |
 
 - Criterion 3 is scored from `--trace` output, so the `trace.step()` calls
   must log each tool's `new_item` id.

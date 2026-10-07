@@ -274,6 +274,9 @@ def create_fit_card(outfit: str, new_item: dict) -> str:
         f"- Mention the item, the price written exactly as {price}, and "
         f"{new_item['platform']} — each once.\n"
         "- Be specific about the vibe of the outfit.\n"
+        "- Open with the outfit, a detail of the piece, or how wearing it "
+        "feels — not with the act of buying it. Bring in the price and "
+        "platform after the first sentence.\n"
         "- No hashtags, no quotation marks around the caption, no preamble."
     )
 

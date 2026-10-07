@@ -648,6 +648,10 @@ or untested.
   asking for a different opening, such as the vibe or the outfit, not the
   purchase. I stopped because unit 4 allows one improvement, and criterion 5
   was the actual miss.
+  *Update:* done later as stretch work, with criterion 4 revised and the
+  prompt changed. The opening now varies (5/5), but the "I scored it on
+  <platform> for $<price>" template moved to the second sentence in 18 of
+  20 cards. See Stretch Features, 3.
 - **Empty-wardrobe advice got vaguer.** The fix traded usefulness for the
   guarantee. "A fluid, wide-bottom piece in a dark neutral" is harder to shop
   for than "black wide-leg trousers". The criterion has no measure of
@@ -858,6 +862,60 @@ caption. The shortest natural sentence that does all of that is "Scored this
 <item> on <platform> for $<price>". The model writes it first nearly every
 time, whatever the item. It is one problem across all four scenarios that
 make a card, not four. The improvement and its `after2` run are part 2.
+
+**3. A second improvement — part 2: the opener fix, measured.**
+
+*What I changed:* One rule added to the `tools.py::create_fit_card` prompt:
+"Open with the outfit, a detail of the piece, or how wearing it feels — not
+with the act of buying it. Bring in the price and platform after the first
+sentence." No banned words, and no example opening to copy.
+
+*Which failure it was meant to fix:* Revised criterion 4, MISSED 0/5 in both
+earlier runs, because every card opened "Scored this…".
+
+**Run Log — After 2** (`results/run_2026-10-07_1820_after2.md`, 5 tries per
+scenario, cache off). This run also includes stretch features 1 and 2: the
+size retry, and `create_fit_card` running over MCP.
+
+| Criterion | Target | Try 1 | Try 2 | Try 3 | Try 4 | Try 5 | Verdict |
+|---|---|---|---|---|---|---|---|
+| 1. A matching query completes all three tools | 4 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 2. An impossible query stops before the second tool | 5 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 3. The searched item is the item every later tool receives | 5 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 4. Fit card (revised: openings) | 4 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 5. An empty wardrobe gets advice, not invented clothes | 4 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+
+- **1, 3:** 5-step traces, with `lst_002` and `lst_004` at every step.
+- **2:** the trace now has 3 steps: the search, the retry without XXS, and
+  the stop. `suggest_outfit` never runs, and the message names a change.
+- **4:** the openings are "that boxy," ×2, "this faded", "chunky black" and
+  "the boxy". No pair is shared by more than two cards. Every card is 3
+  sentences with `$24` and `depop`. It also passes the original wording,
+  since all five first sentences differ.
+- **5:** no wardrobe names and no ownership claims in any try.
+
+Card from try 4, from `tools.py::create_fit_card` via `mcp_server.py`:
+
+```
+Chunky black boots and baggy dark denim instantly turn this faded 2003 tour tee into the ultimate grunge uniform. I scored it on depop for $24 and the cotton is already worn-in to that perfect soft, boxy fit. When I want something easier, I just layer a cropped zip hoodie over it with wide-leg trousers and chunky sneakers.
+```
+
+*Did it help, and how do I know:* For what the revised criterion measures,
+yes: it went from 0/5 to 5/5. Across all 20 cards, none opens with the price
+any more, where 18 of 20 opened "Scored this…" before.
+
+The template didn't disappear, though; it moved. 18 of the 20 cards now say
+"I scored / snagged it on <platform> for $<price>" in the *second* sentence,
+and 7 of 20 use "hits different" in the first. The criterion only looks at
+the opening two words, so it can't see either. I'd call this a partial fix:
+the captions read less alike at a glance, but a reader of five in a row would
+still notice the shape. Criteria 1–3 and 5 held at 5/5, so nothing else broke.
+
+The run also tested stretch 2's open question about pacing. One fit-card call
+was rate-limited by the service ("service pushed back. Waiting 21s"), because
+the server's calls bypass the agent's limiter. The retry recovered it and no
+try failed. The run printed "20 model calls" for what was really 40, because
+of the per-process counting described above.
 
 <!-- ═════════════════════════════════════════════════════════════════════
 
